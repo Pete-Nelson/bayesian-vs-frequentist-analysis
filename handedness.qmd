@@ -1,0 +1,285 @@
+---
+title: "handedness"
+author: "Pete Nelson"
+format: html
+embed-resources: true
+editor: visual
+---
+
+## introduction
+
+Imagine that you're in a room of 100 people, and you're trying to pick out your fellow scientist in the crowd. You know that only 1% of the general population are scientists, so the odds of finding the scientist in this group by random selection is poor. You notice, however, the fellow signing his receipt at the bar is using his **left** hand, and you've heard that 20% of scientists are left-handed whereas only 10% of the greater population is left-handed. Gathering your courage, you tap the fellow on the shoulder saying, **"Wonderful to find a fellow scientist here! Are you rooting for Pearson or Bayes?"**
+
+What are the odds that you've identified a kindred spirit?!
+
+## how to proceed
+
+Without the information on handedness, your odds of having successfully identified the scientist are poor (maybe you went by the ratty Patagonia fleece), only 1%. Once you see evidence of handedness, however, Bayes' Theorem allows you to "update" your confidence because a "lefty" is twice as likely to be a scientist than a non-scientist, so your probability of success greatly increased. *But*, you still have to be careful: the vast majority of lefties are still going to be non-scientists.
+
+## data
+
+Let's re-create your situation in the form of a dataset wherein (for illustration purposes) the single scientist is, indeed, a lefty.
+
+```{r}
+#| label: gen-data
+#| output: false
+
+library(tidyverse)
+library(brms)
+
+# create a small dataset reflecting our 'prior' and 'evidence'
+# 100 people: 1 Scientist (Left-handed), 99 Non-Scientists (10 are Lefties)
+
+data <-
+  tibble(
+    is_scientist = c(1, rep(0, 99)), # 1=scientist, 0=non-scientist
+    is_lefty = c(1, rep(1, 10), rep(0, 89)) # 1=left, 0=non-lefty
+  )
+
+```
+
+## define the model
+
+Now, we'll define a model to calculate the odds that you've correctly identified the scientist, incorporating your knowledge of the scarcity of scientists and the frequency of left-handedness.
+
+```{r}
+#| label: B-model
+#| message: false
+#| warning: false
+#| results: 'hide'
+
+# define a prior for the intercept (the 'base rate' of being a scientist)
+# a value of -4.6 on the logit scale is roughly 1%
+
+my_prior <- set_prior("normal(-4.6, 0.5)", class = "Intercept")
+
+# fit the model
+fit <- brm(
+  is_scientist ~ is_lefty, 
+  data = data, 
+  family = bernoulli(link = "logit"),
+  prior = my_prior,
+  chains = 4, iter = 2000, seed = 42,
+  # keep Stan from chattering at you (sometimes a good thing)
+  silent = 2
+)
+
+```
+
+Note: The logit scale and the Bernoulli family are standard tools for modeling binary outcomes (heads vs tails, survived vs croaked, etc.). The regression-based model we're using is happy to work with any number from negative infinity to positive infinity, but our data are either 0 or 1. And our probabilities can only be allowed to range from 0 to 1 (one of our President's many misunderstandings). By telling `brms` to use the Bernoulli distribution, we're telling our model to estimate the probability of "success" (i.e., finding the scientist) for each individual in the room.
+
+## analysis
+
+Your model output includes a posterior probability distribution that can provide an estimate of the likelihood you've successfully identified your fellow scientist:
+
+```{r}
+#| label: model-prob
+
+# predict the probability of being a scientist, given he's a lefty (is_lefty = 1)
+new_data <- data.frame(is_lefty = 1)
+posterior_probs <- posterior_epred(fit, newdata = new_data)
+
+# show the average updated probability
+mean(posterior_probs)
+
+```
+
+So...our model has just calculated the odds that you've successfully identified the sole scientist in the crowd at approximately 10%. Maybe these still aren't betting odds, but they're still much better than what you started with.
+
+## more on the model output
+
+```{r}
+#| label: model-output
+
+print(fit)
+plot(fit)
+
+```
+
+Here's how to interpret this output:
+
+| metric | value | meaning |
+|------------------------|------------------------|------------------------|
+| Estimate | 2.30 | the best guess for the increase in log-odds (logit scale) |
+| Est.Error | 1.49 | standard deviation of your posterior distribution; how "spread out" your belief is |
+| lower 95% CI | -1.08 | we aren't 100% sure; there could be a slight negative effect |
+| upper 95% CI | 4.74 | ...or it could be a massive positive effect (\>100 times more likely) |
+|  |  |  |
+| Exp(Estimate) | 9.97x | convert Estimate to a more intuitive metric by exponeniating your probability estimate: *e*^2.30^ = approximately 9.9742 |
+
+We may have hoped that the confidence intervals did *not* span 0, but our sample size, frankly, is pretty small, only 100 people, so this is really just an honest reflection of our uncertainty. The model has shifted its belief significantly toward "Scientist" based on that one lefty in your data, even though the starting assumption was that scientists are very rare.
+
+## team Pearson
+
+What if you were strongly Team Pearson? Would your statistical accumen have helped you avoid embarrassment?
+
+Here's the frequentist approach to the problem. For this we use a type of GLM (generalized linear model) called a logistic regression. While `brms` used Markov Chain Monte Carlo (MCMC) to estimate distributions, a logistic regression will use maximum likelihood estimation (MLE) to find the single "best" set of parameters that make your observed data most likely.
+
+```{r}
+#| label: logistic-r
+#| warning: false
+
+# frequentist logistic regression
+freq_fit <- glm(is_scientist ~ is_lefty, 
+                data = data, 
+                # Bernoulli, used in the Bayesian ver, is a special case of the Binomial
+                # so this is approximately the same
+                family = binomial(link = "logit"))
+
+summary(freq_fit)
+
+```
+
+What?! How do you interpret this?
+
+## compare results
+
+Let's compare these results...
+
+```{r}
+#| label: compare
+#| warning: false
+
+library(broom)
+library(broom.mixed)
+
+# tidy up the frequentist model
+freq_results <- tidy(freq_fit, conf.int = TRUE) %>% 
+  mutate(model = "Frequentist (GLM)")
+
+# tidy up the Bayesian model
+bayesian_results <- tidy(fit, conf.int = TRUE) %>% 
+  mutate(model = "Bayesian (brms)")
+
+# bind them together
+comparison <- bind_rows(freq_results, bayesian_results) %>%
+  select(model, term, estimate, conf.low, conf.high)
+
+print(comparison)
+
+```
+
+Note the frequentist intercept estimate (-22.6) and extreme range of the confidence interval (-1946 to 152), and the NA at one extreme for the *is_lefty* term. What about the frequentist *is_lefty* term of 20.3?! This is absurd...the model is suggesting that a lefty is 650 million times more likely to be a scientist and a mathematical artifact of too little data:
+
+*e*^20.3^ = (about) 650,000,000
+
+The GLM simply can't handle the rarity of the scientist and the model is unstable. The Bayesian model is able to provide a sane, usable interval and a realistic estimate. Team Pearson has it's strengths, but in this case Team Bayes is the clear winner. To really hammer this home, let's compare these results graphically.
+
+```{r}
+#| label: prediction
+#| output: false
+
+library(modelr)
+library(tidybayes)
+
+# create a new person who is a lefty
+new_person <- data.frame(is_lefty = 1)
+
+# frequentist prediction (Single Point)
+freq_pred <- predict(freq_fit, newdata = new_person, type = "response")
+
+# Bayesian prediction (Distribution of possibilities)
+bayesian_pred <- fit %>%
+  add_epred_draws(newdata = new_person) %>%
+  summarize(mean_prob = mean(.epred), 
+            lower_ci = quantile(.epred, 0.025), 
+            upper_ci = quantile(.epred, 0.975))
+
+```
+
+```{r}
+#| label: compare2
+
+# compare them
+print(
+  tibble("Frequentist Prob" = round(freq_pred, 3),
+         "Bayesian Prob" = round(bayesian_pred$mean_prob, 3))
+)
+
+```
+
+Looking at the estimates from both models, there doesn't appear to be much difference, but let's plot the two distributions:
+
+```{r}
+#| label: plot-shapes
+
+# 1. extract Bayesian draws for the 'is_lefty' coefficient
+bayesian_draws <- fit %>%
+  gather_draws(b_is_lefty) %>%
+  mutate(model = "Bayesian (brms)")
+
+# 2. create a normal distribution for the Frequentist model
+# centered at 2.37 with SD of 1.46 (using your Bayesian results)
+freq_x <- seq(-2, 7, length.out = 100)
+freq_dist <- data.frame(
+  .value = freq_x,
+  density = dnorm(freq_x, mean = 2.37, sd = 1.46),
+  model = "Frequentist (GLM)"
+)
+
+# 3. plot both
+ggplot() +
+  # Bayesian Density (The mountain)
+  stat_density(data = bayesian_draws, aes(x = .value, fill = model), 
+               alpha = 0.5) +
+  # Frequentist Normal Curve
+  geom_line(data = freq_dist, aes(x = .value, y = density, color = model), 
+            linewidth = 1, linetype = "dashed") +
+  # add a line at 0 to show the "significance" threshold
+  geom_vline(xintercept = 0, linetype = "dotted", color = "red") +
+  labs(title = "Bayesian Posterior vs. Frequentist Distribution",
+       x = "Effect Size (Log-Odds of being a Scientist)",
+       y = "Density") +
+  theme_bw()
+
+
+```
+
+### but wait!
+
+It still doesn't look like there's much difference. If the frequentist results were so crazy, why do these curves look so similar? The reason is that we plotted the Bayesian model parameters using a normal (Gaussian) distribution (look at line 11 in the code chunk above). In other words, we compared the *shapes* of these alternatives. Here's what it looks like if you plot the actual outputs of each model:\
+
+```{r}
+#| label: plot-real
+
+# 1. extract the actual Bayesian draws
+bayesian_draws <- fit %>%
+  gather_draws(b_is_lefty) %>%
+  mutate(model = "Bayesian (brms)")
+
+# 2. use the your ACTUAL GLM results (Estimate: 20.3, Error: ~1050)
+# Note: since our output had NA for some errors, we'll use 1050 as a conservative 'minimum' disaster
+freq_x <- seq(-100, 100, length.out = 1000) 
+freq_dist <- data.frame(
+  .value = freq_x,
+  density = dnorm(freq_x, mean = 20.3, sd = 1050), 
+  model = "Frequentist (GLM) - Exploded"
+)
+
+# 3. plot both outputs
+ggplot() +
+  # the Bayesian "Mountain" now looks like a needle because we've zoomed out so far
+  stat_density(data = bayesian_draws, aes(x = .value, fill = model), 
+               alpha = 0.6) +
+  # the frequentist "Pancake"
+  geom_line(data = freq_dist, aes(x = .value, y = density, color = model), 
+            linewidth = 1) +
+  # Zoom out to see the scale of the failure
+  coord_cartesian(xlim = c(-50, 50)) + 
+  labs(title = "The Bayesian 'Needle' vs. The Frequentist 'Pancake'",
+       subtitle = "why priors matter for small samples",
+       x = "Effect Size (Log-Odds)",
+       y = "Density") +
+  theme_bw()
+
+```
+
+In the Bayesian model, we used an *informative prior* to say that, yes, my left-handed friend is indeed a scientist, but I'm not going to go overboard and I'll keep things reasonable. The frequentist model said, in effect, "OMG! I have seen exactly one scientist. That scientist is left-handed. I have seen zero scientists who are right-handed. Therefore, the 'most likely' state of the universe is that all scientists are lefties and all lefties are scientists."
+
+In statistics, this is called **"The Problem of the Zero Cell."** Because there are **zero** scientists who are right-handed in your experience (data), the frequentist math (which involves dividing by counts) effectively tries to divide by zero to find the ratio.
+
+The Bayesian approach avoids this craziness by using the **prior** to give your model some sensible guidance.
+
+## challenge
+
+Try adding 10 more right-handed non-scientists to the crowd. How does that affect the outcome? What happens if you add just one right-handed scientist to the crowd?!
