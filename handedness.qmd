@@ -96,18 +96,17 @@ plot(fit)
 
 ```
 
-Here's how to interpret this output:
+Here's how to interpret this output (focus on the *is_lefty* row):
 
 | metric | value | meaning |
-|------------------------|------------------------|------------------------|
+|----|----|----|
 | Estimate | 2.30 | the best guess for the increase in log-odds (logit scale) |
 | Est.Error | 1.49 | standard deviation of your posterior distribution; how "spread out" your belief is |
-| lower 95% CI | -1.08 | we aren't 100% sure; there could be a slight negative effect |
-| upper 95% CI | 4.74 | ...or it could be a massive positive effect (\>100 times more likely) |
-|  |  |  |
-| Exp(Estimate) | 9.97x | convert Estimate to a more intuitive metric by exponeniating your probability estimate: *e*^2.30^ = approximately 9.9742 |
+| 95% Credible Interval | -0.99 - 4.76 | spans 0: uncertain directionality; could be slight negative effect or could be a massive positive effect (\>100x more likely) |
+| Rhat | 1.00 | MCMC chain convergence; Rhat≤1.01 acceptable (Rhat\>1.01 non-convergence) |
+| Exp(Estimate) | 9.97x | convert Estimate to a more intuitive metric by exponeniating your probability estimate: *e*^2.30^ = approx 9.9742 |
 
-We may have hoped that the confidence intervals did *not* span 0, but our sample size, frankly, is pretty small, only 100 people, so this is really just an honest reflection of our uncertainty. The model has shifted its belief significantly toward "Scientist" based on that one lefty in your data, even though the starting assumption was that scientists are very rare.
+Generally, we want to see that the 95% credible interval does *not* span 0. This would suggest that the response may be positive or negative to that effect variable, the kind of wishy-washy result that can make a person crazy. In this example, it's a portion of the tail of that distribution that extends into negative territory and our sample size, frankly, is pretty small, only 100 people, so this is really just an honest reflection of our uncertainty. The large majority of that distribution is in positive territory, suggesting that you really have discovered a scientist based on that one lefty in your data, even though the starting assumption was that scientists are very rare.
 
 ## team Pearson
 

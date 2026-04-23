@@ -8,24 +8,24 @@ editor: visual
 
 ## introduction
 
-Imagine we are studying how **forest density** (the number of trees per acre) might affect the **nesting success** of a specific bird species. We have data from 20 different forest plots. Here's how we might approach such a study:
+Imagine we are studying how **forest density** (the number of trees per hectare) might affect the **nesting success** of a specific bird species. We have data from 20 different forest plots. Here's how we might approach such a study:
 
--   variable x: tree density (number of trees per hectare)
+- variable x: tree density (number of trees per hectare)
 
--   variable y: number of successful nests (number of nests per hectare)
+- variable y: number of successful nests (number of nests per hectare)
 
--   determine whether more trees lead to greater nesting success
+- determine whether more trees lead to greater nesting success
 
 ## frequentist approach
 
-A Frequentist would likely use a **Linear Regression** and focus on the **p-value**. 
+A Frequentist would likely use a **linear regression** and focus on the **p-value**. 
 
--   how it works: assumes there is one "true" fixed effect of tree density and calculate the probability of seeing your data if, in reality, tree density had *zero* effect (the null hypothesis)
+- how it works: assumes there is one "true" fixed effect of tree density and calculate the probability of seeing your data if, in reality, tree density had *zero* effect (the null hypothesis)
 
--   the result: something like "The p-value is 0.03. Since this is \<0.05, we reject the null hypothesis and conclude that the effect is statistically significant." 
+- the result: some conclusion like "The p-value is 0.03. Since this is less than 0.05, we reject the null hypothesis and conclude that the effect is statistically significant." 
 
 | Pros | Cons |
-|----|----|
+|------------------------------------|------------------------------------|
 | *objective*: relies strictly on the current data; no subjective input | *rigid*: the p-value is often misunderstood (it does not tell you the probability that your explanation is *true*, only how (un)likely your data are |
 | *standardized*: the approach is universal; anticipated by journals and peers | *sample size sensitivity*: with a small sample size (like our 20 plots), it may be easy to miss a real effect (Type II error) |
 | *computationally fast*: simple formulas that run instantly |  |
@@ -34,20 +34,20 @@ A Frequentist would likely use a **Linear Regression** and focus on the **p-val
 
 A Bayesian approach to the same problem would use a **posterior distribution** and include **priors**.
 
--   how it works: start with *priors* (existing knowledge from previous bird studies), and combine those priors with your new data to create a *posterior*—a probability distribution of the likely effect.
+- how it works: start with *priors* (existing knowledge from previous bird studies), and combine those priors with your new data in your model to result in a *posterior* distribution—a probability distribution of the likely effect.
 
--   the result: "There is a 94% probability that increasing tree density increases nesting success by 1 to 3 nests per acre."
+- the result: "There is a 94% probability that increasing tree density increases nesting success by 1 to 3 nests per hectare."
 
 | Pros | Cons |
-|----|----|
+|------------------------------------|------------------------------------|
 | *intuitive*: answers the question we really want answered—how likely is it that increasing tree density improves nesting success? | *subjective*: choosing your priors introduces the potential for bias (but there are ways around this) |
 | *incorporates context*: you don't have to pretend that this is the only study ever to address this question and can even use results from past studies to inform your model | *complex*: requires more math and more computerized sampling (MCMC); takes additional computing power |
-| *flexible*: works better with small or messy data where frequentist methods may struggle |  |
+| *flexible*: often works better than frequentist methods with small or messy data or with complex experimental designs (works well with large datasets too!) |  |
 
 ## comparison
 
 |   | frequentist | Bayesian |
-|----|----|----|
+|------------------------|------------------------|------------------------|
 | core question | How unlikely are these data? | How likely is this hypothesis? |
 | prior knowledge | ignored (starts from scratch) | integrated (takes advantage of prior info) |
 | outcome | p-values & confidence intervals | probability distributions & credible intervals |
@@ -68,7 +68,7 @@ set.seed(42)
 
 # generate data
 n_plots <- 20
-tree_density <- runif(n_plots, 10, 50)  # trees per acre
+tree_density <- runif(n_plots, 10, 50)  # trees per hectare
 # true relationship: intercept of 2, slope of 0.5, with some noise
 nest_success <- 2 + 0.5 * tree_density + rnorm(n_plots, mean = 0, sd = 3)
 
@@ -80,9 +80,9 @@ forest_data <- tibble(tree_density = tree_density,
 
 ### choosing a prior
 
-*Before* you start exploring your data, you need to select a prior. Plotting your data or doing any kind of initial analysis before selecting a prior is frowned on. That said, if previous work as well as basic biology can help to inform your prior, these are definitely things to consider. In this case, let's say that a comparable species–perhaps a European variety with a similar ecology–has shown improved nesting success in re-planted Italian forests: 0.4 nests per 1 added tree. In other words, we're expecting a positive association between tree density and nesting. Using a standard deviation that is 25% of your slope might be a reasonable place to start.
+*Before* you start exploring your data, you need to select a prior. Plotting your data or doing any kind of initial analysis before selecting a prior is frowned on. That said, if previous work as well as basic biology can help to inform your prior, these are definitely things to consider. In this case, let's say that a comparable species–perhaps a European variety with a similar ecology–has shown improved nesting success in re-planted Italian forests and those researchers found an average of 0.4 nests per hectare for each additional tree. In other words, we're expecting a positive association between tree density and nesting. Using a standard deviation that is 25% of your slope might be a reasonable place to start.
 
-``` # prior: slope is likely 0.4, sd = 0.1``; the 'normal' indicates that you expect the distribution of the potential slope to be normally distributed ```
+``` # prior: slope is likely 0.4, sd = 0.1``; 'normal' indicates that you expect the distribution of the potential slopes to be normally distributed ```
 
 `prior(normal(0.4, 0.1))`
 
@@ -117,7 +117,7 @@ summary(freq_model)
 
 ```
 
-The p-value is much less than 0.05, so the standard interpretation is that tree density has a "statistically significant" effect. To put it another way, the slope of the regression is not equal to 0.
+The p-value is much less than 0.05, so the standard interpretation is that tree density has a "statistically significant" effect. To put it another way, the slope of the regression is not equal to 0. The R-squared value, 0.76, tells us that tree density explains about 76% of the variance in nest success–a substantial effect size. And, the Standard Error, 0.08, is small relative to the Estimate (0.63), so the effect size reliable. (In a linear model, the (Intercept) is the predicted value of the dependent variable (nest success) when the independent variable (tree density) is zero. It's important mathematically, but not particularly relevant–for one thing, nesting success can't actually be lower than 0 so the linear relationship we're assuming isn't going to hold true as tree density approaches zero.
 
 ### Bayesian analysis
 
@@ -161,22 +161,22 @@ print(hyp_result.p1)
 
 ```
 
-To see if your model is performing well, start by looking for three things: (1) The Rhat value should be 1 (+/- 0.03), (2) your credible intervals (l-95% CI and u-95% CI) should *not* span 0, and (3) the plots of your MCMC chains should be roughly parallel.
+To see if your model is performing well, start by looking for three things: (1) The Rhat value should be 1 (or very close), (2) your credible intervals (l-95% CI and u-95% CI) should *not* span 0, and (3) the plots of your MCMC chains should be roughly parallel.
 
--   **Estimate:** The estimate for effect variable is telling you the estimated magnitude of the effect it has on the response variable. For this example, you'd express this as "for additional tree (one per unit area), the model predicts an additional 0.52 nests."
+- **Estimate:** The estimate for effect variable is telling you the estimated magnitude of the effect it has on the response variable. For this example, you'd express this as "for additional tree (one per unit area), the model predicts an additional 0.52 nests."
 
--   **Post.Prob:** If this value is close to 1 (e.g., \>0.95), it strongly suggests that the slope is positive.
+- **Post.Prob:** If this value is close to 1 (e.g., \>0.95), it strongly suggests that the slope is positive.
 
--   **95% Credible Interval:** If the *entire* interval (from `l-95% CI` to `u-95% CI`) is above 0, you have strong evidence for a positive effect. (If it was entirely below 0, that'd be evidence for a negative effect.)
+- **95% Credible Interval:** If the *entire* interval (from `l-95% CI` to `u-95% CI`) is above 0, you have strong evidence for a positive effect. (If it was entirely below 0, that'd be evidence for a negative effect.)
 
--   **Evid.Ratio:** This is the ratio of the posterior probability of your hypothesis vs. the alternative, *P(H)/P(not H)*
+- **Evid.Ratio:** This is the ratio of the posterior probability of your hypothesis vs. the alternative, *P(H)/P(not H)*
 
 ## compare results
 
 **Key differences**
 
 1.  Frequentist results: You get a p-value. If it was equal to 0.02, you'd conclude that there's only a 2% chance of seeing the data you did if tree density had no effect on nesting success. Based on our ordinary least squares regression, what would you conclude?
-2.  Bayesian results: You get a credible interval. You can state that there's a 95% chance that the real effect of adding one tree per acre will result in an additional 0.38 to 0.66 nests per acre.
+2.  Bayesian results: You get a credible interval. You can state that there's a 95% chance that the real effect of adding one tree per hectare will result in an additional 0.38 to 0.66 nests per hectare.
 
 ## using *priors*
 
@@ -235,7 +235,7 @@ plot(bmodel.p3)
 
 ## leave-one-out analysis
 
-We're going to use the package `loo` to perform a model comparison technique called leave-one-out ('*loo*') cross-validation to perform our sensitivity analysis. There are other packages such as `priorsense` that are tailored specifically for exploring a range of priors using *loo*, but I'm going to show this one because it's the one I'm familiar with and because you can use it to compare models that differ in more than simply their choice of priors.
+We're going to use the package `loo` to perform a model comparison technique called leave-one-out ('*loo*') cross-validation to perform our sensitivity analysis. This is a method for evaluating model performance by training a model using *n* - 1 data points. This is repeated in iterative-fashion, validating each on the point left out. There are other packages such as `priorsense` that are tailored specifically for exploring a range of priors using *loo*, but I'm going to show this one because it's the one I'm familiar with and because you can use it to compare models that differ in more than simply their choice of priors.
 
 ```{r}
 #| label: loo
