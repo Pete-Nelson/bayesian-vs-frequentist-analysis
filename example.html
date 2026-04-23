@@ -2233,7 +2233,7 @@ vertical-align: -.125em;
 
 <section id="introduction" class="level2">
 <h2 class="anchored" data-anchor-id="introduction">introduction</h2>
-<p>Imagine we are studying how <strong>forest density</strong> (the number of trees per acre) might affect the <strong>nesting success</strong> of a specific bird species. We have data from 20 different forest plots. Here’s how we might approach such a study:</p>
+<p>Imagine we are studying how <strong>forest density</strong> (the number of trees per hectare) might affect the <strong>nesting success</strong> of a specific bird species. We have data from 20 different forest plots. Here’s how we might approach such a study:</p>
 <ul>
 <li><p>variable x: tree density (number of trees per hectare)</p></li>
 <li><p>variable y: number of successful nests (number of nests per hectare)</p></li>
@@ -2242,10 +2242,10 @@ vertical-align: -.125em;
 </section>
 <section id="frequentist-approach" class="level2">
 <h2 class="anchored" data-anchor-id="frequentist-approach">frequentist approach</h2>
-<p>A Frequentist would likely use a <strong>Linear Regression</strong> and focus on the <strong>p-value</strong>. </p>
+<p>A Frequentist would likely use a <strong>linear regression</strong> and focus on the <strong>p-value</strong>. </p>
 <ul>
 <li><p>how it works: assumes there is one “true” fixed effect of tree density and calculate the probability of seeing your data if, in reality, tree density had <em>zero</em> effect (the null hypothesis)</p></li>
-<li><p>the result: some conclusion like “The p-value is 0.03. Since this is &lt;0.05, we reject the null hypothesis and conclude that the effect is statistically significant.” </p></li>
+<li><p>the result: some conclusion like “The p-value is 0.03. Since this is less than 0.05, we reject the null hypothesis and conclude that the effect is statistically significant.” </p></li>
 </ul>
 <table class="caption-top table">
 <colgroup>
@@ -2279,7 +2279,7 @@ vertical-align: -.125em;
 <p>A Bayesian approach to the same problem would use a <strong>posterior distribution</strong> and include <strong>priors</strong>.</p>
 <ul>
 <li><p>how it works: start with <em>priors</em> (existing knowledge from previous bird studies), and combine those priors with your new data in your model to result in a <em>posterior</em> distribution—a probability distribution of the likely effect.</p></li>
-<li><p>the result: “There is a 94% probability that increasing tree density increases nesting success by 1 to 3 nests per acre.”</p></li>
+<li><p>the result: “There is a 94% probability that increasing tree density increases nesting success by 1 to 3 nests per hectare.”</p></li>
 </ul>
 <table class="caption-top table">
 <colgroup>
@@ -2359,7 +2359,7 @@ vertical-align: -.125em;
 <span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="co"># generate data</span></span>
 <span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>n_plots <span class="ot">&lt;-</span> <span class="dv">20</span></span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>tree_density <span class="ot">&lt;-</span> <span class="fu">runif</span>(n_plots, <span class="dv">10</span>, <span class="dv">50</span>)  <span class="co"># trees per acre</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>tree_density <span class="ot">&lt;-</span> <span class="fu">runif</span>(n_plots, <span class="dv">10</span>, <span class="dv">50</span>)  <span class="co"># trees per hectare</span></span>
 <span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="co"># true relationship: intercept of 2, slope of 0.5, with some noise</span></span>
 <span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>nest_success <span class="ot">&lt;-</span> <span class="dv">2</span> <span class="sc">+</span> <span class="fl">0.5</span> <span class="sc">*</span> tree_density <span class="sc">+</span> <span class="fu">rnorm</span>(n_plots, <span class="at">mean =</span> <span class="dv">0</span>, <span class="at">sd =</span> <span class="dv">3</span>)</span>
 <span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a></span>
@@ -2370,8 +2370,8 @@ vertical-align: -.125em;
 </section>
 <section id="choosing-a-prior" class="level3">
 <h3 class="anchored" data-anchor-id="choosing-a-prior">choosing a prior</h3>
-<p><em>Before</em> you start exploring your data, you need to select a prior. Plotting your data or doing any kind of initial analysis before selecting a prior is frowned on. That said, if previous work as well as basic biology can help to inform your prior, these are definitely things to consider. In this case, let’s say that a comparable species–perhaps a European variety with a similar ecology–has shown improved nesting success in re-planted Italian forests: 0.4 nests per 1 added tree. In other words, we’re expecting a positive association between tree density and nesting. Using a standard deviation that is 25% of your slope might be a reasonable place to start.</p>
-<p><code># prior: slope is likely 0.4, sd = 0.1``; the &#39;normal&#39; indicates that you expect the distribution of the potential slope to be normally distributed</code></p>
+<p><em>Before</em> you start exploring your data, you need to select a prior. Plotting your data or doing any kind of initial analysis before selecting a prior is frowned on. That said, if previous work as well as basic biology can help to inform your prior, these are definitely things to consider. In this case, let’s say that a comparable species–perhaps a European variety with a similar ecology–has shown improved nesting success in re-planted Italian forests and those researchers found an average of 0.4 nests per hectare for each additional tree. In other words, we’re expecting a positive association between tree density and nesting. Using a standard deviation that is 25% of your slope might be a reasonable place to start.</p>
+<p><code># prior: slope is likely 0.4, sd = 0.1``; &#39;normal&#39; indicates that you expect the distribution of the potential slopes to be normally distributed</code></p>
 <p><code>prior(normal(0.4, 0.1))</code></p>
 </section>
 <section id="plot-data" class="level3">
@@ -2422,7 +2422,7 @@ Multiple R-squared:  0.7565,    Adjusted R-squared:  0.7429
 F-statistic: 55.91 on 1 and 18 DF,  p-value: 6.329e-07</code></pre>
 </div>
 </div>
-<p>The p-value is much less than 0.05, so the standard interpretation is that tree density has a “statistically significant” effect. To put it another way, the slope of the regression is not equal to 0.</p>
+<p>The p-value is much less than 0.05, so the standard interpretation is that tree density has a “statistically significant” effect. To put it another way, the slope of the regression is not equal to 0. The R-squared value, 0.76, tells us that tree density explains about 76% of the variance in nest success–a substantial effect size. And, the Standard Error, 0.08, is small relative to the Estimate (0.63), so the effect size reliable. (In a linear model, the (Intercept) is the predicted value of the dependent variable (nest success) when the independent variable (tree density) is zero. It’s important mathematically, but not particularly relevant–for one thing, nesting success can’t actually be lower than 0 so the linear relationship we’re assuming isn’t going to hold true as tree density approaches zero.</p>
 </section>
 <section id="bayesian-analysis" class="level3">
 <h3 class="anchored" data-anchor-id="bayesian-analysis">Bayesian analysis</h3>
@@ -2506,7 +2506,7 @@ Posterior probabilities of point hypotheses assume equal prior probabilities.</c
 <p><strong>Key differences</strong></p>
 <ol type="1">
 <li>Frequentist results: You get a p-value. If it was equal to 0.02, you’d conclude that there’s only a 2% chance of seeing the data you did if tree density had no effect on nesting success. Based on our ordinary least squares regression, what would you conclude?</li>
-<li>Bayesian results: You get a credible interval. You can state that there’s a 95% chance that the real effect of adding one tree per acre will result in an additional 0.38 to 0.66 nests per acre.</li>
+<li>Bayesian results: You get a credible interval. You can state that there’s a 95% chance that the real effect of adding one tree per hectare will result in an additional 0.38 to 0.66 nests per hectare.</li>
 </ol>
 </section>
 <section id="using-priors" class="level2">
@@ -2607,7 +2607,7 @@ scale reduction factor on split chains (at convergence, Rhat = 1).</code></pre>
 </section>
 <section id="leave-one-out-analysis" class="level2">
 <h2 class="anchored" data-anchor-id="leave-one-out-analysis">leave-one-out analysis</h2>
-<p>We’re going to use the package <code>loo</code> to perform a model comparison technique called leave-one-out (‘<em>loo</em>’) cross-validation to perform our sensitivity analysis. There are other packages such as <code>priorsense</code> that are tailored specifically for exploring a range of priors using <em>loo</em>, but I’m going to show this one because it’s the one I’m familiar with and because you can use it to compare models that differ in more than simply their choice of priors.</p>
+<p>We’re going to use the package <code>loo</code> to perform a model comparison technique called leave-one-out (‘<em>loo</em>’) cross-validation to perform our sensitivity analysis. This is a method for evaluating model performance by training a model using <em>n</em> - 1 data points. This is repeated in iterative-fashion, validating each on the point left out. There are other packages such as <code>priorsense</code> that are tailored specifically for exploring a range of priors using <em>loo</em>, but I’m going to show this one because it’s the one I’m familiar with and because you can use it to compare models that differ in more than simply their choice of priors.</p>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(loo)</span>
 <span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a></span>
