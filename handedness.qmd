@@ -14,7 +14,7 @@ What are the odds that you've identified a kindred spirit?!
 
 ## how to proceed
 
-Without the information on handedness, your odds of having successfully identified the scientist are poor (maybe you went by the ratty Patagonia fleece), only 1%. Once you see evidence of handedness, however, Bayes' Theorem allows you to "update" your confidence because a "lefty" is twice as likely to be a scientist than a non-scientist, so your probability of success greatly increased. *But*, you still have to be careful: the vast majority of lefties are still going to be non-scientists.
+Without the information on handedness, your odds of having successfully identified the scientist are poor (maybe you went by the ratty Patagonia fleece), only about 1%. Once you see evidence of handedness, however, Bayes' Theorem allows you to "update" your confidence since scientists are twice as likely than non-scientists to be a "lefty." *But*, you still have to be careful: the vast majority of lefties are still going to be non-scientists.
 
 ## data
 
@@ -99,7 +99,7 @@ plot(fit)
 Here's how to interpret this output (focus on the *is_lefty* row):
 
 | metric | value | meaning |
-|----|----|----|
+|------------------------|------------------------|------------------------|
 | Estimate | 2.30 | the best guess for the increase in log-odds (logit scale) |
 | Est.Error | 1.49 | standard deviation of your posterior distribution; how "spread out" your belief is |
 | 95% Credible Interval | -0.99 - 4.76 | spans 0: uncertain directionality; could be slight negative effect or could be a massive positive effect (\>100x more likely) |
@@ -273,7 +273,7 @@ ggplot() +
 
 ```
 
-In the Bayesian model, we used an *informative prior* to say that, yes, my left-handed friend is indeed a scientist, but I'm not going to go overboard and I'll keep things reasonable. The frequentist model said, in effect, "OMG! I have seen exactly one scientist. That scientist is left-handed. I have seen zero scientists who are right-handed. Therefore, the 'most likely' state of the universe is that all scientists are lefties and all lefties are scientists."
+In the Bayesian model, we used an *informative prior* to say that, "Yes, my left-handed friend is indeed a scientist, but I'm not going to go overboard and I'll keep things reasonable." The frequentist model said, in effect, "OMG! I have seen exactly one scientist. That scientist is left-handed. I have seen zero scientists who are right-handed. Therefore, the 'most likely' state of the universe is that all scientists are lefties and all lefties are scientists."
 
 In statistics, this is called **"The Problem of the Zero Cell."** Because there are **zero** scientists who are right-handed in your experience (data), the frequentist math (which involves dividing by counts) effectively tries to divide by zero to find the ratio.
 
@@ -282,3 +282,70 @@ The Bayesian approach avoids this craziness by using the **prior** to give your 
 ## challenge
 
 Try adding 10 more right-handed non-scientists to the crowd. How does that affect the outcome? What happens if you add just one right-handed scientist to the crowd?!
+
+## Eric's comments
+
+Hey Pete,
+
+ 
+
+This lefthandedness example is a real mind bender. I think it may be too much for this training. Once folks need to consider logit links and log odds, it excludes most other than really savvy statisticians. I am intrigued by it though and want to push you a little bit to consider some alternative phrasing and interpretation of the results from the two approaches.
+
+ 
+
+First, can we revisit a small statement in the intro:
+
+- Once you see evidence of handedness, however, Bayes’ Theorem allows you to “update” your confidence because a “lefty” is twice as likely to be a scientist than a non-scientist
+
+I think this is incorrect and should be changed to something like this:
+
+- Once you see evidence of handedness, however, Bayes’ Theorem allows you to “update” confidence since scientists are twice as likely than non-scientists to be a “lefty”.
+
+ 
+
+For the Bayes model formulation, I am curious why there was no prior set for “left-handedness”? To create a proper logit link you need a linear formula a + b\*is.lefty. You provided a baseline for being a scientist with: my_prior \<- set_prior("normal(-4.6, 0.5)", class = "Intercept") prior, but you did not specify a prior for how the slope changes with likelihood of scientists to be left handed. With weak and unbiased constraints on the slope parameter (in absence of a set prior, the default setting of brms is to guess a very uninformative prior student_t(3, 0, 2.5)), the Bayesian model moved considerably given an outsized influence of the single data point. Consider how the outcome of the modeling would look given several priors for the slope stemming from various assumptions:
+
+1.  left handedness has no effect on the probability of being a scientist:
+
+    a.   ("normal(0, 1)", class = "slope")
+
+                                                                i.      Mean posterior probability = 0.014
+
+2.  20% of scientists are lefty compared to 10% of the general population
+
+    a.  ("normal(.7, .5)", class = "slope")
+
+                                                                i.      Mean posterior probability = 0.025
+
+3.  5% of scientists are lefty compared to 10% of the general population
+
+    a.  ("normal(-.7, .5)", class = "slope")
+
+                                                                i.      Mean posterior probability = 0.007
+
+ 
+
+Also, to give frequentists their fair shake, should we consider minimum sample size? Without it as you point out, the model cannot handle the essentially 0 degrees of freedom due to complete separation wherein the predictor perfectly predicts the outcome. It is a bit misleading to look at the SE in this case and say that frequentists would make the wrong inference given this dataset, but maybe more appropriate to say that the MLE of Bhat in this case is infinite due to the model structure.
+
+ 
+
+In this example, the snooty Bayesian scientist may actually be more likely to misjudge the situation since they were so confident in a \[potentially faulty\] prior compared to the frequentist who just says I have no idea, the error bars are too big, we need more data! Ultimately, the Bayes approach, when the model was conditioned on a slope prior of .7, reduced uncertainty by a factor of 2.5, which is not insignificant, but did not approach the factor of 10 which was reported above. Furthermore, how confident are we in the assumption that 20% of scientists are lefties? Was that based on some hearsay at the bar? Or perhaps a “random sample of scientists on a softball team where lefties are selected because of their dominance against righty pitching? Just playing devil’s advocate here 😉 Happy to chat about this more with you if needed.
+
+ 
+
+Eric
+
+```{r}
+
+# left handedness has no effect on the prob of being a scientist
+prior1 <- set_prior("normal(0, 1)", class = "slope")
+
+# 20% of scientists are lefties; only 10% of the gen pop are lefties
+prior2 <- set_prior("normal(0.7, 0.5)", class = "slope")
+
+# 5% of scientists are lefties; only 10% of the gen pop are lefties
+prior2 <- set_prior("normal(-0.7, 0.5)", class = "slope")
+
+priors <- list(prior1, prior2, prior3)
+
+```

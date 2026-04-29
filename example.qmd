@@ -8,11 +8,13 @@ editor: visual
 
 ## introduction
 
+The intent of this workshop is to provide a gentle introduction to Bayesian analysis, using a simple ecological study and analyzing the data using a frequentist approach likely to be broadly familiar and a Bayesian analysis. We're going to disregard theory (at least for now), and focus purely on function. The goal is to show that both are useful ways to explore ecology, and to make the case that the Bayesian approach (a) is entirely doable for all of us and (b) has some unique positive attributes that are likely to be appealing.
+
 Imagine we are studying how **forest density** (the number of trees per hectare) might affect the **nesting success** of a specific bird species. We have data from 20 different forest plots. Here's how we might approach such a study:
 
 - variable x: tree density (number of trees per hectare)
 
-- variable y: number of successful nests (number of nests per hectare)
+- variable y: number of nests (number of nests per hectare)
 
 - determine whether more trees lead to greater nesting success
 
@@ -20,9 +22,11 @@ Imagine we are studying how **forest density** (the number of trees per hectare)
 
 A Frequentist would likely use a **linear regression** and focus on the **p-value**. 
 
-- how it works: assumes there is one "true" fixed effect of tree density and calculate the probability of seeing your data if, in reality, tree density had *zero* effect (the null hypothesis)
+- how it works: assumes there is one "true" fixed effect of tree density and calculates the probability of actually getting the data that you've gathered if, in reality, tree density had *zero* effect (the null hypothesis)
 
-- the result: some conclusion like "The p-value is 0.03. Since this is less than 0.05, we reject the null hypothesis and conclude that the effect is statistically significant." 
+- the result: some conclusion along the lines of "The p-value is 0.03. Since this is less than 0.05, we reject the null hypothesis and conclude that the effect is statistically significant." 
+
+Remember that this evaluates the slope of a line through an X-Y plot that relates the value of a response variable (here, nests per hectare) with regard to an explanatory variable (tree density). A line with a slope of zero is expected where the explanatory variable has no effect on the response variable. A line with a slope not equal to zero, be it positive or negative, is expected when tree density affects nesting success. Remember too that the R^2^ value is a measure of how much of the variance in the data is explained by the linear model. Think of it as a measure of the size of the effect. Your explanatory variable may indeed have an important ecological effect on the response variable, but if multiple other factors also affect that response variable, you can wind up with a very low p-value [and]{.underline} a low R^2^ value.
 
 | Pros | Cons |
 |------------------------------------|------------------------------------|
@@ -32,7 +36,7 @@ A Frequentist would likely use a **linear regression** and focus on the **p-valu
 
 ## bayesian approach
 
-A Bayesian approach to the same problem would use a **posterior distribution** and include **priors**.
+A Bayesian approach to the same problem starts with a **prior distribution**, a "best guess" as to the relationship between an explanatory variable and a response variable, applies the data you collect as evidence for that relationship (referred to as the **likelihood**), and then provides a **posterior distribution**, the product of the prior and the data.
 
 - how it works: start with *priors* (existing knowledge from previous bird studies), and combine those priors with your new data in your model to result in a *posterior* distribution—a probability distribution of the likely effect.
 
@@ -51,9 +55,11 @@ A Bayesian approach to the same problem would use a **posterior distribution** a
 | core question | How unlikely are these data? | How likely is this hypothesis? |
 | prior knowledge | ignored (starts from scratch) | integrated (takes advantage of prior info) |
 | outcome | p-values & confidence intervals | probability distributions & credible intervals |
-| best for | routine testing, large sample sizes, more replicates | complex models, small sample sizes, fewer replicates |
+| best for | routine testing, larger sample sizes, more replicates | complex models, small sample sizes, fewer replicates |
 
-## analyse
+## analyze
+
+Here, we're going analyze some made-up data using both methods to illustrate the process and the output for each.
 
 ### data generation
 
@@ -69,7 +75,11 @@ set.seed(42)
 # generate data
 n_plots <- 20
 tree_density <- runif(n_plots, 10, 50)  # trees per hectare
+
 # true relationship: intercept of 2, slope of 0.5, with some noise
+# in effect, I've 'cooked the books', guaranteeing that there IS a relationship
+# between tree density and nesting success
+
 nest_success <- 2 + 0.5 * tree_density + rnorm(n_plots, mean = 0, sd = 3)
 
 # combine into a tibble with 20 plots
@@ -80,11 +90,11 @@ forest_data <- tibble(tree_density = tree_density,
 
 ### choosing a prior
 
-*Before* you start exploring your data, you need to select a prior. Plotting your data or doing any kind of initial analysis before selecting a prior is frowned on. That said, if previous work as well as basic biology can help to inform your prior, these are definitely things to consider. In this case, let's say that a comparable species–perhaps a European variety with a similar ecology–has shown improved nesting success in re-planted Italian forests and those researchers found an average of 0.4 nests per hectare for each additional tree. In other words, we're expecting a positive association between tree density and nesting. Using a standard deviation that is 25% of your slope might be a reasonable place to start.
+If you're going to use Bayesian statistics, *before* you start exploring your data, you need to select a prior. We're going review a frequentist approach first, but I want to introduce how you might think about a prior before we do anything else. The reason is that plotting your data (much less any kind of initial analysis) before selecting a prior means that your *prior* is going to be influenced by the evidence. This can lead to setting a prior that ensures the result you want to see. This does present a dilemma though: First, most of us, as soon as we've got some data, are really excited to see if there are any apparent patterns and are eager to plot them. In addition, if you don't look at your data, you may miss some bonafide issues: outliers, non-linear patterns, or measurement errors
 
-``` # prior: slope is likely 0.4, sd = 0.1``; 'normal' indicates that you expect the distribution of the potential slopes to be normally distributed ```
+That said, if previous work as well as basic biology can help to inform your prior, these are definitely things to consider. In this case, let's say that a comparable species–perhaps a European variety with a similar ecology–has shown improved nesting success in re-planted Italian forests and those researchers found an average of 0.4 nests per hectare for each additional tree. In other words, we're expecting a positive association between tree density and nesting. Using a standard deviation that is 25% of your slope might be a reasonable place to start. More formally: *The slope is likely to be close to 0.4, with a standard deviation of about 0.1 and a 'normal' or Gaussian distribution of those potential slopes.*
 
-`prior(normal(0.4, 0.1))`
+For now, we're simply going to state this as our prior; we'll worry about incorporating this information into our analysis when we dive into the Bayesian approach.
 
 ### plot data
 
@@ -96,11 +106,12 @@ After you've chosen a prior, it's hard to think of an instance where you would *
 
 forest_data %>% 
   ggplot(aes(x = tree_density, y = nest_success)) +
-  geom_smooth(method = "lm", se = T, color = "blue") +
   geom_point(size = 3) +
   theme_bw()
 
 ```
+
+Just eye-balling the data, it sure looks like there's a relationship here.
 
 ### frequentist analysis
 
@@ -115,13 +126,22 @@ freq_model <- lm(nest_success ~ tree_density, data = forest_data)
 # view results (look for the p-value and coefficient)
 summary(freq_model)
 
+# plot data again with the line predicted by our regression
+forest_data %>% 
+  ggplot(aes(x = tree_density, y = nest_success)) +
+  geom_smooth(method = "lm", se = T, color = "blue") +
+  geom_point(size = 3) +
+  theme_bw()
+
 ```
 
-The p-value is much less than 0.05, so the standard interpretation is that tree density has a "statistically significant" effect. To put it another way, the slope of the regression is not equal to 0. The R-squared value, 0.76, tells us that tree density explains about 76% of the variance in nest success–a substantial effect size. And, the Standard Error, 0.08, is small relative to the Estimate (0.63), so the effect size reliable. (In a linear model, the (Intercept) is the predicted value of the dependent variable (nest success) when the independent variable (tree density) is zero. It's important mathematically, but not particularly relevant–for one thing, nesting success can't actually be lower than 0 so the linear relationship we're assuming isn't going to hold true as tree density approaches zero.
+Most of us (myself included) look first at the p-value (*Pr(\>\|t\|)*): Is it less than 0.05?! But really the **Estimate** is arguably the more important value. In our results, this is telling us that for every 1 unit increase in tree density, you get a 0.62 unit increase in nesting success–that's pretty substantial! And the fact that the **Estimate** is about 7.5 times bigger than the **Std. Error** (0.084), shows that the size of the effect (**R-squared**) is reliable.
+
+The p-value, 0.000000633, is much less than 0.05, so the standard interpretation is that tree density has a "statistically significant" effect. To put it another way, the slope of the regression is not equal to 0. The R-squared value, 0.76, tells us that tree density explains about 76% of the variance in nest success–a substantial effect size. (In a linear model, the (Intercept) is the predicted value of the dependent variable (nest success) when the independent variable (tree density) is zero. It's important mathematically, but not particularly relevant–for one thing, nesting success can't actually be lower than 0 so the linear relationship we're assuming isn't going to hold true as tree density approaches zero.)
 
 ### Bayesian analysis
 
-For the Bayesian version, we are going to use the `brms` package. This allows us to include a **prior**, using those results from a previous study to suggest that we might expect the slope to be around 0.4 with a SD of 0.1.
+For the Bayesian version, we are going to use the `brms` package. This allows us to include that **prior** we introduced earlier, using those results from a previous study to suggest that we might expect the slope to be around 0.4 with a SD of 0.1.
 
 ```{r}
 #| label: Bayesian-analysis
@@ -131,12 +151,15 @@ For the Bayesian version, we are going to use the `brms` package. This allows us
 
 library(brms)
 
-# fit the Bayesian model with a weakly informative normal (Gaussian) prior for the slope
+# fit the Bayesian model with an informative normal (Gaussian) prior for the slope
 bmodel.p1 <- brm(data = forest_data,
                  nest_success ~ tree_density, 
                  family = gaussian,
                  # prior: slope is likely 0.4, sd = 0.1
                  prior(normal(0.4, 0.1)), 
+                 # create separate set of prior-only draws, kept independently from 
+                 # the results; useful for understanding how your prior affects model output
+                 sample_prior = "yes",
                  iter = 2000, warmup = 1000, chains = 4, cores = 4,
                  seed = 42,
                   # stop Stan from printing progress for every chain
@@ -155,36 +178,44 @@ View results.
 print(bmodel.p1)
 plot(bmodel.p1)
 
-# test if the slope for tree_density is > 0
-hyp_result.p1 <- hypothesis(bmodel.p1, "tree_density > 0")
-print(hyp_result.p1)
+# 1-sided test if the slope for tree_density is > 0
+(hyp_result.p1 <- hypothesis(bmodel.p1, "tree_density > 0"))
 
 ```
 
-To see if your model is performing well, start by looking for three things: (1) The Rhat value should be 1 (or very close), (2) your credible intervals (l-95% CI and u-95% CI) should *not* span 0, and (3) the plots of your MCMC chains should be roughly parallel.
+#### model performance
 
-- **Estimate:** The estimate for effect variable is telling you the estimated magnitude of the effect it has on the response variable. For this example, you'd express this as "for additional tree (one per unit area), the model predicts an additional 0.52 nests."
+To see if your model is performing well, start by looking for four things:
 
-- **Post.Prob:** If this value is close to 1 (e.g., \>0.95), it strongly suggests that the slope is positive.
+1.  Rhat should be 1.00 (or very close, +/- 0.02)
+2.  your credible interval (l-95% CI and u-95% CI) for your effect variable (*b_tree_density*) should *not* span 0
+3.  the plots of your posterior distributions (here, *b_tree_density*, *b_Intercept*, and *sigma*) should be unimodal (a narrow peak for your effect variable means high precision; a wide, flattish distribution means the effect size is uncertain)
+4.  your MCMC chains should be roughly parallel, with no slope up or down
 
-- **95% Credible Interval:** If the *entire* interval (from `l-95% CI` to `u-95% CI`) is above 0, you have strong evidence for a positive effect. (If it was entirely below 0, that'd be evidence for a negative effect.)
+#### interpretation
 
-- **Evid.Ratio:** This is the ratio of the posterior probability of your hypothesis vs. the alternative, *P(H)/P(not H)*
+- **Estimate:** The estimate for the effect variable is telling you the estimated magnitude of the effect it has on the response variable. In this example, you'd express this as "for each additional tree (one per unit area), the model predicts an additional 0.52 nests."
+
+- **Post.Prob:** If this value is close to 1 (e.g., \>0.95), it strongly suggests that the slope is positive. Because this is a one-sided hypothesis and we got a '\*', the posterior probability is greater than 95%.
+
+- **95% Credible Interval:** If the *entire* interval (from `CI.Lower` to `CI.Upper`) is above 0, you have strong evidence for a positive effect. (If it was entirely below 0, that'd be evidence for a negative effect.)
+
+- **Evid.Ratio:** This is the ratio of the posterior probability of your hypothesis vs. the alternative, *P(H)/P(not H).* In this example, we took 1000's of samples from the posterior distribution and in 100% of those samples, the value for *tree_density* was greater than zero supporting our hypothesis, hence an evidence ratio of '*Inf.'*
 
 ## compare results
 
 **Key differences**
 
-1.  Frequentist results: You get a p-value. If it was equal to 0.02, you'd conclude that there's only a 2% chance of seeing the data you did if tree density had no effect on nesting success. Based on our ordinary least squares regression, what would you conclude?
-2.  Bayesian results: You get a credible interval. You can state that there's a 95% chance that the real effect of adding one tree per hectare will result in an additional 0.38 to 0.66 nests per hectare.
+1.  Frequentist results `summary(freq_model)`: You get a p-value. If it was equal to 0.02, you'd conclude that there's only a 2% chance of seeing the data you did if tree density had no effect on nesting success. Based on our regression results, what do you conclude?
+2.  Bayesian results `print(bmodel.p1)`: You get a credible interval. You can state that there's a 95% chance that the real effect of adding one tree per hectare will result in an additional 0.38 to 0.66 nests per hectare.
 
 ## using *priors*
 
-In Bayesian analyses, you'll sometimes experience some pressure to select flat (e.g., a uniform distribution) or weakly informative priors, based on the argument that to do otherwise is inherently subjective. Actually, the selection of *any* prior, even a flat one, requires an assumption of some kind. Furthermore, if previous studies offer relevant data, it seems foolish to me to pretend that they never happened.
+In Bayesian analyses, you'll sometimes experience some pressure to select flat (e.g., a uniform distribution) or skeptical informative priors, based on the argument that to do otherwise is inherently subjective. Actually, the selection of *any* prior, requires an assumption of some kind. Furthermore, if previous studies offer relevant data, it seems foolish to me to pretend that they never happened.
 
-I found all this a bit confusing though and I thought it might help others with a similar reaction to work through what happens if you do not have previous research to help select a prior or if you want to take a more conservative approach, insisting that your data "speak for themselves" as it were. In fact, it's commonplace to run a model with multiple priors and conduct a **sensitivity analysis** to compare how different priors affect your model performance.
+I found all this a bit confusing though and I thought it might help others with a similar reaction to work through what happens if you do not have previous research to help select a prior or if you want to take a more conservative approach, insisting that your data "speak for themselves" as it were. In fact, it's commonplace to run a model with multiple priors and then conduct a **sensitivity analysis** to compare how different priors affect your model performance.
 
-The prior we used above is considered a *weakly informative* prior (`prior = normal(0.4, 0.1)`). We'll use the results from running the model with this prior in our sensitivity analysis, but we'll also run it using a *skeptical* prior, one where we tell the model that we really don't think that nesting success has anything to do with tree density. Here, `prior = normal(0, 0.01)`. The first term '0' is the slope we'd expect if there was no relationship, and '0.01' is so small that your data are going to have to be very compelling to overcome this. We'll also use a *flat* prior in effect telling the model that we really have no idea how or if these things are related: `prior = normal(0, 100)`. We'll incorporate all three of these results in a sensitivity analysis, and consider what those results tell us about both our data and our model (i.e., the relationship between tree density and nesting success). Here's what all this looks like...
+The prior we used above is considered an *informative* prior (`prior = normal(0.4, 0.1)`) because the uncertainty we specify (SD=0.1) is small compared to the estimated effect. We'll use the results from running the model with this prior in our sensitivity analysis, but we'll also run it using a *skeptical* prior, one where we tell the model that we really don't think that nesting success has anything to do with tree density. Here, `prior = normal(0, 0.01)`. The first term '0' is the slope we'd expect if there was no relationship, and '0.01' is so small that your data are going to have to be very compelling to overcome this. We'll also use a *flat* prior, in effect telling the model that we really have no idea how or if these things are related with a large standard deviation, telling the model that the actual value could fall somewhere across a wide range of values (-200 to +200): `prior = normal(0, 100)`. We'll incorporate all three of these results in a sensitivity analysis, and consider what those results tell us about both our data and our model (i.e., the relationship between tree density and nesting success). Here's what all this looks like...
 
 ```{r}
 #| label: alt-priors
@@ -198,6 +229,7 @@ bmodel.p2 <- brm(data = forest_data,
                  family = gaussian,
                  # prior: slope is 0, sd = 0.01
                  prior(normal(0, 0.01)), 
+                 sample_prior = "yes",
                  iter = 2000, warmup = 1000, chains = 4, cores = 4,
                  seed = 42,
                  # keep Stan from chattering at you (sometimes a good thing)
@@ -211,6 +243,7 @@ bmodel.p3 <- brm(data = forest_data,
                  family = gaussian,
                  # prior: slope is 0, sd = 100
                  prior(normal(0, 100)), 
+                 sample_prior = "yes",
                  iter = 2000, warmup = 1000, chains = 4, cores = 4,
                  seed = 42,
                  silent = 2
@@ -225,13 +258,18 @@ View results.
 #| label: results-m2m3
 
 # view results (look for the "Estimate", CIs and "Rhat") & model function
+
+# this is our skeptical (aka strong) prior
 print(bmodel.p2)
 plot(bmodel.p2)
 
+# this is our flat prior
 print(bmodel.p3)
 plot(bmodel.p3)
 
 ```
+
+What do you think these results are telling us?
 
 ## leave-one-out analysis
 
@@ -258,4 +296,187 @@ loo_compare(bmodel.p1, bmodel.p2, bmodel.p3,
 
 **elpd_diff:** This is the difference in the *Expected Log Pointwise Predictive Density* between a model and the best-performing model, bmodel.p3, where elpd_diff = 0.0. Negative values indicate a reduction in predictive performance where the rule of thumb is that any value \>4 should make you sit up and take notice. The standard error of that difference, **se_diff**, tells you how much uncertainty there is in the elpd_diff. In Bayesian model comparison, a difference larger than 2 or 3 standard errors is typically considered a "noteworthy" or significant drop in performance. The sensitivity analysis suggests that **bmodel.p3** and **bmodel.p1** have nearly identical predictive performance, while **bmodel.p2** is significantly worse.
 
-In terms of the priors, using our weak prior in bmodel.p1 performed well–it was a good guess! The observation that the flat prior (bmodel.p3) performs *slightly* better is more a testament to data quality (sample size) and the apparent fact that tree density really does seem to play a role in nesting success.
+In terms of the priors, using our informative prior in bmodel.p1 performed well–it was a good guess! The observation that the flat prior (bmodel.p3) performs *slightly* better is more a testament to data quality (sample size) and the apparent fact that tree density really does seem to play a role in nesting success.
+
+## prior predictive check
+
+Eric Holmes reviewed this for me and suggested wisely that it'd be helpful to go over how to do a prior predictive check. Visualizing how the priors constrain parameter values may help understanding how to select priors and the consequences of those choices. Eric also observed that, because I used an informative prior in the first model (`bmodel.p1`) in which the slope parameter was essentially constrained to positive values, the posterior prediction winds up with a positive slope. That informative prior that I used was `prior(normal(0.4, 0.1))`--0.4 is the center (average slope) and 0.1 is the SD or the uncertainty around that mean. The both of other two priors I used had an average slope of 0, but differed greatly in the uncertainty around those means: bmodel.p2 used the skeptical prior(normal(0, 0.01)) where the model was *really* constrained–unable to deviate very far from the prior (hence, "skeptical"). The other model, bmodel.p3, took the opposite approach with prior(normal(0, 100)), allowing the model to roam widely but using the actual data to shape the predictions.
+
+Eric wrote some very cool code for doing this which I've included below.
+
+```{r}
+#| label: Eric-ppc
+
+# Eric's prior predictive check
+
+library(cowplot)
+
+# predictor range for plotting
+tree_seq <- seq(10, 50, length.out = 200)
+
+prior_pred <- function(n_draws, prior_intercept, prior_slope, prior_sigma) {
+
+# draw parameters from the prior
+
+  a <- rnorm(n_draws, mean = prior_intercept[1], sd = prior_intercept[2])
+  b <- rnorm(n_draws, mean = prior_slope[1], sd = prior_slope[2])
+  sigma <- rexp(n_draws, rate = 1 / prior_sigma)  # exponential prior on sigma
+
+# generate predicted lines
+
+tibble(draw = rep(1:n_draws, each = length(tree_seq)),
+         tree_density = rep(tree_seq, times = n_draws),
+         nest_success = a[draw] + b[draw] * tree_density)
+}
+
+
+pp_informed <- prior_pred(
+  n_draws = 100,
+  prior_intercept = c(0, 5),
+  prior_slope     = c(0.4, 0.1),
+  prior_sigma     = 5)
+
+pp_skeptical <- prior_pred(
+  n_draws = 100,
+  prior_intercept = c(0, 5),
+  prior_slope     = c(0, 0.01),
+  prior_sigma     = 5)
+
+pp_flat <- prior_pred(
+  n_draws = 100,
+  prior_intercept = c(0, 100),
+  prior_slope     = c(0, 100),
+  prior_sigma     = 20)
+
+plot_prior <- function(df, title){
+  
+  ggplot(df, aes(tree_density, nest_success, group = draw)) +
+    geom_line(alpha = 0.2, color = "steelblue") +
+    labs(title = title,
+         x = "Tree density",
+         y = "Predicted nest success (prior only)") +
+    theme_minimal()
+
+}
+
+plot_grid(plot_prior(pp_informed,"Informative Prior"),
+          plot_prior(pp_skeptical, "Skeptical Prior"),
+          plot_prior(pp_flat, "Flat Prior"), 
+          nrow = 1)
+
+```
+
+How should you understand these figures? First, these are multiple draws or simulated "results" for each prior distribution (remember! they're **distributions**!). Each includes an average slope plus a measure for the variance around that average, the standard deviation. The informative prior took advantage of the European study and set the mean slope at 0.4 with a SD of 0.1. The other two had a mean slope of 0, but the variance in the skeptical prior was very low, 0.01, so what looks like a bunch of parallel lines actually deviate from slope=0 just a little. The flat prior has an average slope of 0...but the SD = 100, and accordingly the simulation shows a very wide range of slopes.
+
+### comparing distributions
+
+One way to look at the effect of these different priors is to plot the prior and posterior distributions from each model output. It maybe better to ignore the code for now and just look at the plots:
+
+```{r}
+#| label: prior-v-posterior
+
+# extract the posterior and prior samples
+draws.p1 <- as.data.frame(bmodel.p1)
+plot1 <-
+  ggplot(draws.p1) +
+  # the Posterior
+  geom_density(aes(x = b_tree_density, fill = "Posterior"), alpha = 0.5) +
+  # the Prior (brms names it 'prior_b')
+  geom_density(aes(x = prior_b, fill = "Prior"), alpha = 0.5) +
+  scale_fill_manual(values = c("Posterior" = "steelblue", "Prior" = "gray")) +
+  labs(title = "bmodel.p1 with informative prior",
+       subtitle = "Prior and Posterior Distributions",
+       x = "Value of tree_density", y = "Density", fill = "Distribution") +
+  theme_minimal()
+
+draws.p2 <- as.data.frame(bmodel.p2)
+plot2 <-
+  ggplot(draws.p2) +
+  geom_density(aes(x = b_tree_density, fill = "Posterior"), alpha = 0.5) +
+  geom_density(aes(x = prior_b, fill = "Prior"), alpha = 0.5) +
+  scale_fill_manual(values = c("Posterior" = "steelblue", "Prior" = "gray")) +
+  labs(title = "bmodel.p2 with skeptical prior",
+       subtitle = "Prior and Posterior Distributions",
+       x = "Value of tree_density", y = "Density", fill = "Distribution") +
+  theme_minimal()
+
+draws.p3 <- as.data.frame(bmodel.p3)
+plot3 <-
+  ggplot(draws.p3) +
+  geom_density(aes(x = b_tree_density, fill = "Posterior"), alpha = 0.5) +
+  geom_density(aes(x = prior_b, fill = "Prior"), alpha = 0.5) +
+  scale_fill_manual(values = c("Posterior" = "steelblue", "Prior" = "gray")) +
+  labs(title = "bmodel.p3 with flat prior",
+       subtitle = "Prior and Posterior Distributions",
+       x = "Value of tree_density", y = "Density", fill = "Distribution") +
+  theme_minimal()
+
+library(patchwork)
+
+(plot3 + theme(legend.position = "none") + plot1 + theme(legend.position = "none")) / plot2
+```
+
+What the heck is going on?! If you remember from the leave-one-out cross-validation analysis (LOO), bmodel.p3 with the flat prior "won" with bmodel.p1 (informative prior) as a close second. Here, bmodel.p2 looks the best with its prior and posterior distributions very closely matched!
+
+The reason is that LOO and Prior Plots measure two completely different things. LOO looks at how well the models predict future data, but the prior vs. posterior distribution plots show how much the model learned–the difference if you will between the two distributions. The informative prior (bmodel.p1) allowed the model some leeway so the posterior moves substantially to the right, but still bullied the data a bit. The skeptical prior in bmodel.p2 basically argues that the data couldn't be right and forces the posterior to essentially match the prior. LOO sees that the model is predicting poorly, ignoring the obvious relationship in the data. The (rather ridiculous-looking) plot from bmodel.p3 is actually a sign of a healthy, data-driven model: Spread from -200 to +200, the height of the curve is very small, essentially a pancake, but the spike in the posterior at 0.63 is a sign of high confidence. The problem lies mostly in the visual scale of the plot...check this out:
+
+```{r}
+#| label: zoom
+
+plot3 + xlim(-2, 2)
+```
+
+Okay...clearly you all can't get enough of this, so here's a little more. What can we learn from pulling multiple draws from the model if we restrict the output to draws from these three priors alone?
+
+```{r}
+#| label: prior-draws
+
+priors <-
+  list(
+    informative = c(set_prior("normal(0.4, 0.1)", class = "b")),
+    skeptical = c(set_prior("normal(0, 0.01)", class = "b")),
+    flat = c(set_prior("normal(0, 100)", class = "b")))
+
+# fit model using ONLY the priors
+fits <- lapply(names(priors), function(p_name) {
+  
+  brm(nest_success ~ tree_density, 
+      data = forest_data, 
+      prior = priors[[p_name]],
+      seed = 123,
+      sample_prior = "only",
+      # 'file' automatically saves each model as 'fit_informative.rds', etc.
+      file = paste0("fit_", p_name), 
+      silent = 2)
+})
+
+# name components of the fits list
+names(fits) <- c("informative", "skeptical", "flat")
+
+# extract tree_density dataframe from each model
+plot_data <- lapply(names(fits), function(name) {
+  # get effects for tree_density
+  eff <- conditional_effects(fits[[name]], "tree_density")
+  
+  # conditional_effects stores the actual data in a list element named 'tree_density'
+  df <- as.data.frame(eff$tree_density)
+  
+  # add identifying column
+  df$model_name <- name
+  return(df)
+}) %>% 
+  bind_rows()
+
+# plot priors
+ggplot(plot_data, aes(x = tree_density, y = estimate__)) +
+  geom_ribbon(aes(ymin = lower__, ymax = upper__), alpha = 0.2, fill = "steelblue") +
+  geom_line(color = "steelblue", linewidth = 1) +
+  facet_wrap(~model_name) +
+  coord_cartesian(ylim = c(-500, 500)) + 
+  theme_bw()
+
+```
+
+Looking at these figures from left to right, the flat prior shows a negative slop and a LOT of noise. First, that hourglass look with the noise lowest at a tree_density around 35 is due to the fact that the regression is most stable at the mean of our explanatory variable. That regression line acts a bit like a seesaw with the least movement at the fulcrum and the most movement at the extremes of your explanatory variable. Because the SD for the flat prior is huge (100) *and* because in our model the intercept is also allowed vary, we see tremendous swings around that fulcrum. This also accounts for the negative slope in the average here (the dark blue line)--we're working with a relatively small sample size (4000 draws) so just a few high-magnitude negative draws can easily pull the sample mean away from the expected 0. The skeptical prior is literally the opposite: Here, as expected, the line has a slope that's essentially 0 with very, very little noise (SD=0.01). The informative prior, the one based on that European study, shows a positive slope. It looks very slight due to the scale here, but if you zoomed in you'd see that it's actually 0.40. Note: All three models use the same default prior for `sigma` (usually a student-t distribution), the uncertainty of the prediction, so the "ribbon" looks about the same for the skeptical and informative priors–it only blows up with the giant SD of the flat prior.
+
+In hindsight, I'd have tested a weak prior for this model too, something like normal(0, 10), centered at 0 assuming "no effect" unless proven otherwise with a wide SD, covering every possible biological reality (and many impossible ones) while still keeping the model away from infinity.
